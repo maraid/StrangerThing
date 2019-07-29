@@ -5,7 +5,8 @@ After=network.target
 [Service]
 Type=simple
 Restart=always
-ExecStart=/bin/bash -c "cd /home/pi/Halloween2018; source venv/bin/activate; python3 UpsideDown.py"
+ExecStart=/bin/bash -c "sudo su -;source /home/pi/.virtualenvs/elevenv/bin/activate; cd /home/pi/StrangerThing/; python3 UpsideDown.py"
 
 [Install]
 WantedBy=multi-user.target
+
