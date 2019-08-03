@@ -79,6 +79,7 @@ class Instagram(InstagramAPI):
         return pending_inbox
 
     def approve_pending_threads(self, threads):
+        self.uuid = self.generateUUID(True)
         data = {
             "_csrftoken": self.token,
             "_uuid": self.uuid,
@@ -89,16 +90,18 @@ class Instagram(InstagramAPI):
             data["thread_ids"] = threads
             succ = self.SendRequest("direct_v2/threads/approve_multiple/", self.generateSignature(json.dumps(data)))
         else:
-            succ = self.SendRequest("direct_v2/threads/{}/approve".format(threads[0]), self.generateSignature(json.dumps(data)))
+            succ = self.SendRequest("direct_v2/threads/{}/approve/".format(threads[0]), self.generateSignature(json.dumps(data)))
         return succ
 
     def mark_as_seen(self, thread, item):
+        self.uuid = self.generateUUID(True)
         data = json.dumps({
             '_uuid': self.uuid,
             '_csrftoken': self.token,
             'action': 'mark_seen',
             'thread_id': thread,
             'item_id': item,
+            'use_unified_inbox': 'true',
         })
         request = self.SendRequest("direct_v2/threads/{}/items/{}/seen/".format(thread, item),
                                    self.generateSignature(data))
@@ -142,13 +145,13 @@ class Instagram(InstagramAPI):
         for thread in threads:
             if not thread.get("read_state"):
                 continue
-
+            time.sleep(0.3)
             thread_id = thread.get("thread_id")
             if not self.getv2Threads(thread_id):
                 continue
 
             thread_details = self.LastJson.get("thread")
-
+            time.sleep(0.3)
             if thread_details.get("pending"):
                 self.approve_pending_threads(thread_id)
 

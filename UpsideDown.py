@@ -32,19 +32,24 @@ class UpsideDown:
         except FileNotFoundError:
             session_cookies = None
 
-        self.facebook = Facebook.Facebook(os.getenv('FB_USER'), os.getenv('FB_PASSWD'),
-                                          self.message_queue, self.debug_flag, session_cookies=session_cookies)
+        try:
+            self.facebook = Facebook.Facebook(os.getenv('FB_USER'), os.getenv('FB_PASSWD'),
+                                              self.message_queue, self.debug_flag, session_cookies=session_cookies)
+            self.facebook_thread = threading.Thread(target=self.facebook.listen)
+            self.facebook_thread.start()
 
-        with open("eggos", "w") as cookies:
-            cookies.write(json.dumps(self.facebook.getSession()))
+            with open("eggos", "w") as cookies:
+                cookies.write(json.dumps(self.facebook.getSession()))
+        except:
+            pass
 
-        self.facebook_thread = threading.Thread(target=self.facebook.listen)
-        self.facebook_thread.start()
-
-        self.instagram = Instagram.Instagram(os.getenv('IG_USER'), os.getenv('IG_PASSWD'),
-                                             self.message_queue, self.debug_flag)
-        self.instagram_thread = threading.Thread(target=self.instagram.listen)
-        self.instagram_thread.start()
+        try:
+            self.instagram = Instagram.Instagram(os.getenv('IG_USER'), os.getenv('IG_PASSWD'),
+                                                 self.message_queue, self.debug_flag)
+            self.instagram_thread = threading.Thread(target=self.instagram.listen)
+            self.instagram_thread.start()
+        except:
+            pass
 
         self.display = Display.Display()
         self.display_thread = threading.Thread(target=self.display.run_forever)
@@ -146,6 +151,23 @@ class UpsideDown:
 
     def display_message(self, arg):
         return self.push_to_display(0, arg, self.facebook.uid, True)
+
+    def beat(self, arg):
+        try:
+            if int(arg) == 0:
+                if self.display.beat_flag.is_set():
+                    self.display.beat_flag.clear()
+                    return "Beat has been disabled."
+                return "Beat stayed unchanged. (disabled)"
+            elif int(arg) == 1:
+                if not self.display.beat_flag.is_set():
+                    self.display.beat_flag.set()
+                    return "Beat has been enabled."
+                return "Beat stayed unchanged. (enabled)"
+            elif arg is None:
+                return "Beat is set to {}".format(self.display.beat_flag.is_set())
+        except ValueError:
+            return "Parameter has to be either 0 or 1."
 
     def help(self, _):
         return "Available commands: " + "\n".join(self.commands.keys())

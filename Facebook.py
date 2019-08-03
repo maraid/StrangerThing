@@ -17,7 +17,7 @@ class Facebook(fbchat.Client):
     def onMessage(self, author_id, message_object, thread_id, thread_type, **kwargs):
         self.log.info("{} from {} in {}".format(message_object, thread_id, thread_type.name))
 
-        if thread_type == models.ThreadType.USER and message_object.text[0] != "$":
+        if thread_type == models.ThreadType.USER and message_object.text and message_object.text[0] != "$":
             self.markAsDelivered(thread_id, message_object.uid)
             self.markAsRead(thread_id)
             self.message_queue.put((message_object.text, author_id, "FB"))

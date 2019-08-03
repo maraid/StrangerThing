@@ -1,9 +1,13 @@
 import rpi_ws281x as npx
+import RPi.GPIO as GPIO
+# import RPIO
 import colorsys
 import random
 import time
 import multiprocessing
 import queue
+import threading
+import logging
 
 ADDR_MAP = {'A': 24, 'B': 23, 'C': 22, 'D': 21, 'E': 20,
             'F': 15, 'G': 16, 'H': 17, 'I': 18, 'J': 19,
@@ -23,6 +27,14 @@ LED_CHANNEL    = 0       # set to '1' for GPIOs 13, 19, 41, 45 or 53
 CHAR_ON_PERIOD = 1.3
 DELAY_BETWEEN_CHARS = 0.2
 MESSAGE_DELAY = 1.5
+
+BEAT_PIN = 25
+TEST_PIN = 16
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(BEAT_PIN, GPIO.IN)
+# GPIO.setup(TEST_PIN, GPIO.OUT)
+# GPIO.output(TEST_PIN, GPIO.LOW)
 
 
 def random_color():
@@ -48,13 +60,29 @@ def wheel(pos):
 
 class Display:
     def __init__(self):
+        self.log = logging.getLogger("client")
         self.strip = npx.Adafruit_NeoPixel(LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS, LED_CHANNEL)
         self.strip.begin()
 
         self.in_queue = queue.PriorityQueue()
         self.out_queue = queue.Queue()
-
+        self.beat_flag = threading.Event()
         self.animation_process = None
+
+        self.brightness = multiprocessing.Event()
+
+        self.beat_flag.set()
+
+        GPIO.add_event_detect(
+            BEAT_PIN,
+            GPIO.RISING,
+            callback=self.beat_callback,
+            bouncetime=10
+        )
+
+        self.strip.setBrightness(0)
+        time.sleep(1)
+        self.strip.setBrightness(1)
 
     def show_char(self, c, color=None):
         led = ADDR_MAP.get(c, 26)  # 26 is out of range, nothing will light up
@@ -98,6 +126,17 @@ class Display:
         for i in range(self.strip.numPixels()):
             self.strip.setPixelColor(i, npx.Color(0, 0, 0))
         self.strip.show()
+
+    def flash(self):
+        for i in range(0, self.strip.numPixels()):
+            self.strip.setPixelColor(i, random_color())
+        self.strip.show()
+        while 1:
+            if self.brightness.is_set():
+                self.strip.setBrightness(50)
+            else:
+                self.strip.setBrightness(3)
+            self.strip.show()
 
     def theater_chase(self, color=random_color(), wait_ms=50, iterations=20):
         """Movie theater light style chaser animation."""
@@ -161,14 +200,25 @@ class Display:
             time.sleep(0.03)
         time.sleep(0.3)
 
-
     def random_animation(self):
         self.clear_strip()
-        animation_list = [self.theater_chase,
-                          self.rainbow,
-                          self.rainbow_cycle,
-                          self.dun_dun]
+        animation_list = [
+            # self.theater_chase,
+            #  self.rainbow,
+            # self.rainbow_cycle,
+            #  self.dun_dun
+            self.flash
+        ]
         random.choice(animation_list)()
+
+    def beat_callback(self, _):
+        self.brightness.set()
+        time.sleep(0.01)
+        self.brightness.clear()
+
+    def mock_brightness(self, val):
+        self.log.info("brightness changed to {}".format(val))
+        GPIO.output(TEST_PIN, val)
 
     def random_forever(self):
         while True:

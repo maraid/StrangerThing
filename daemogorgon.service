@@ -9,4 +9,3 @@ ExecStart=/bin/bash -c "sudo su -;source /home/pi/.virtualenvs/elevenv/bin/activ
 
 [Install]
 WantedBy=multi-user.target
-
